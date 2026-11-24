@@ -94,5 +94,32 @@ class AggregatorFactory:
         "razorpay" : RazorpayAggregator
     }
     @classmethod
-    def get_aggregator_object(cls, aggregator_name: str):
+    def get_aggregator_object(cls, aggregator_name):
+        aggregator = cls.factory[aggregator_name]
+        return aggregator
+
+def main:
+    try:
+        aggregator_name = input("enter aggregator name razorpay or stripe :").toLower()
+        method_type = input("enter payement method (card/upi) :").toLower()
+        amount = float(input("enter amount : "))
+
+        aggregator = AggregatorFactory.get_aggregator_object(aggregator_name)
+
+        if method_type == "card":
+            card_number = input("enter card number : ")
+            payement = aggregator.call_get_payment_object(method_type, amount, card_number)
+
+        elif method_type == "upi":
+            upi_id = input("enter upi id : ")
+            payement = aggregator.call_get_payment_object(method_type, amount, upi_id)
         
+        else: print("invalid payement option")
+
+        if payement == 1 : print("payement sucsessful")
+        else : print("try again")
+
+    except ValueError as e:
+        print("error in user values" e)
+    except BaseException as b:
+        print("server error : ", b)
