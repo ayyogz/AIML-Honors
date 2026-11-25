@@ -1,11 +1,10 @@
 def output_decorator(parameter):
     def decorator(func):
         def wrapper(*args, **kwargs):
-            print('---')
             print(parameter)
             print(args)
             print(result)
-            print('---')
+           
             return result
         return wrapper
     return decorator
