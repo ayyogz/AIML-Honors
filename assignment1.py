@@ -1,125 +1,198 @@
-from abc import ABC , abstractmethod
-class paymentmethod(ABC):
-        @abstractmethod
-        def get_details(self) -> str:
-            pass
 
-        @abstractmethod
-        def pay(self, amount:float) -> bool:
-            pass  
+from abc import ABC, abstractmethod
 
 
-class RazorpayCardPayment(paymentmethod):
+class PaymentMethod(ABC):
+
+    @abstractmethod
+    def get_details(self) -> str:
+        pass
+
+    @abstractmethod
+    def pay(self, amount: float) -> bool:
+        pass
+
+
+class RazorpayCardPayment(PaymentMethod):
+
     def __init__(self, card_number):
         self.card_number = card_number
+
     def get_details(self):
         return f"Razor card: {self.card_number}"
+
     def pay(self, amount):
-        print(f"Razorpay card payment : {amount}$")
-        return 1
+        print(f"Razorpay card payment: {amount}$")
+        return True
 
 
-class StripeCardPayment(paymentmethod):
+class StripeCardPayment(PaymentMethod):
+
     def __init__(self, card_number):
         self.card_number = card_number
+
     def get_details(self):
         return f"Stripe card: {self.card_number}"
+
     def pay(self, amount):
-        print(f"Stripe card payment : {amount}$")
-        return 1
+        print(f"Stripe card payment: {amount}$")
+        return True
 
-class RazorpayUPIPayement(paymentmethod):
+
+class RazorpayUPIPayment(PaymentMethod):
+
     def __init__(self, upi):
         self.upi = upi
-    def get_details(self):
-        return f"upi id : {self.upi}"
-    def pay(self,amount):
-        print(f"razorpay upi payment : {amount}$")
-        return 1
 
-class StripeUPIPayement(paymentmethod):
+    def get_details(self):
+        return f"UPI ID: {self.upi}"
+
+    def pay(self, amount):
+        print(f"Razorpay UPI payment: {amount}$")
+        return True
+
+
+class StripeUPIPayment(PaymentMethod):
+
     def __init__(self, upi):
         self.upi = upi
+
     def get_details(self):
-        return f"upi id : {self.upi}"
-    def pay(self,amount):
-        print(f"stripe upi payment : {amount}$")
-        return 1
+        return f"UPI ID: {self.upi}"
+
+    def pay(self, amount):
+        print(f"Stripe UPI payment: {amount}$")
+        return True
 
 
+class FactoryPaymentMethod:
 
-class FactoryPaymentMethod():
-    factory{}
-    @classmethod 
-    def get_payment_object(cls, method_type: str, **kwargs) -> paymentmethod:
+    @classmethod
+    def get_payment_object(cls, method_type, aggregator_name, **kwargs):
 
-        class RazorpayFactory(FactoryPaymentMethod):
-            factory = {
+        factories = {
+            "razorpay": {
                 "card": RazorpayCardPayment,
                 "upi": RazorpayUPIPayment
-            }
-        class StripeFactory(FactoryPaymentMethod):
-            factory = {
+            },
+            "stripe": {
                 "card": StripeCardPayment,
                 "upi": StripeUPIPayment
             }
+        }
+
+        if aggregator_name not in factories:
+            raise ValueError("Invalid aggregator")
+
+        payment_class = factories[aggregator_name].get(method_type)
+
+        if payment_class is None:
+            raise ValueError("Invalid payment method")
+
+        return payment_class(**kwargs)
 
 
 class Aggregator(ABC):
+
     @abstractmethod
-    def  call_get_payment_object(self, method_type: str, amount: float, **kwargs) -> bool:
+    def call_get_payment_object(self, method_type, amount, **kwargs) -> bool:
         pass
 
+
 class RazorpayAggregator(Aggregator):
-    processing = 2/100
-    def  call_get_payment_object(self, method_type: str, amount: float, **kwargs):
-        payment = RazorpayFactory.get_payement_object(
-            method_type, **kwargs
+
+    processing = 2 / 100
+
+    def call_get_payment_object(self, method_type, amount, **kwargs):
+
+        payment = FactoryPaymentMethod.get_payment_object(
+            method_type, "razorpay", **kwargs
         )
-        final = amount + amount*processing
-        return payment.pay()
+
+        final_amount = amount + (amount * self.processing)
+
+        return payment.pay(final_amount)
+
 
 class StripeAggregator(Aggregator):
-    processing = 2.9
-    def  call_get_payment_object(self, method_type: str, amount: float, **kwargs):
-        payment = StripeFactory.get_payement_object(
-            method_type, **kwargs
+
+    processing = 2.9 / 100
+
+    def call_get_payment_object(self, method_type, amount, **kwargs):
+
+        payment = FactoryPaymentMethod.get_payment_object(
+            method_type, "stripe", **kwargs
         )
-        final = amount + amount*processing
-        return payment.pay()
+
+        final_amount = amount + (amount * self.processing)
+
+        return payment.pay(final_amount)
+
 
 class AggregatorFactory:
+
     factory = {
-        "stripe" : StripeAggregator
-        "razorpay" : RazorpayAggregator
+        "stripe": StripeAggregator,
+        "razorpay": RazorpayAggregator
     }
+
     @classmethod
     def get_aggregator_object(cls, aggregator_name):
-        aggregator = cls.factory[aggregator_name]
-        return aggregator
 
-def main:
+        if aggregator_name not in cls.factory:
+            raise ValueError("Invalid aggregator name")
+
+        return cls.factory[aggregator_name]()
+
+
+def main():
+
     try:
-        aggregator_name = input("enter aggregator name razorpay or stripe :").toLower()
-        method_type = input("enter payement method (card/upi) :").toLower()
-        amount = float(input("enter amount : "))
+        aggregator_name = input(
+            "Enter aggregator name (razorpay or stripe): "
+        ).lower()
 
-        aggregator = AggregatorFactory.get_aggregator_object(aggregator_name)
+        method_type = input(
+            "Enter payment method (card/upi): "
+        ).lower()
+
+        amount = float(input("Enter amount: "))
+
+        aggregator = AggregatorFactory.get_aggregator_object(
+            aggregator_name
+        )
 
         if method_type == "card":
-            card_number = input("enter card number : ")
-            payement = aggregator.call_get_payment_object(method_type, amount, card_number)
+
+            card_number = input("Enter card number: ")
+
+            payment = aggregator.call_get_payment_object(
+                method_type, amount, card_number=card_number
+            )
 
         elif method_type == "upi":
-            upi_id = input("enter upi id : ")
-            payement = aggregator.call_get_payment_object(method_type, amount, upi_id)
-        
-        else: print("invalid payement option")
 
-        if payement == 1 : print("payement sucsessful")
-        else : print("try again")
+            upi_id = input("Enter UPI ID: ")
+
+            payment = aggregator.call_get_payment_object(
+                method_type, amount, upi=upi_id
+            )
+
+        else:
+            print("Invalid payment option")
+            return
+
+        if payment:
+            print("Payment successful")
+        else:
+            print("Try again")
 
     except ValueError as e:
-        print("error in user values" e)
-    except BaseException as b:
-        print("server error : ", b)
+        print("Error in user values:", e)
+
+    except Exception as e:
+        print("Server error:", e)
+
+
+if __name__ == "__main__":
+    main()
